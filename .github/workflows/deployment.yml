@@ -44,7 +44,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && matrix.env == 'prod'
     strategy:
       matrix:
-        env: [prod] 
+        env: [dev] 
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
