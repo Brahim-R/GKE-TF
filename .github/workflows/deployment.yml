@@ -56,7 +56,7 @@ jobs:
         run: terraform -chdir=envs/dev init
 
       - name: Terraform Apply
-        run: terraform -chdir=envs/dev apply -auto-approve tfplan
+        run: terraform -chdir=envs/dev apply -auto-approve 
 
   destroy-plan:
     runs-on: ubuntu-latest
