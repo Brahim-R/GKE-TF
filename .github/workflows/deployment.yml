@@ -1,0 +1,104 @@
+name: Terraform GKE Deployment
+
+on:
+  pull_request:
+    paths:
+      - 'envs/dev/**'
+      - 'modules/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'envs/prod/**'
+      - 'modules/**'
+  workflow_dispatch: {} # enables manual triggers
+
+env:
+  GOOGLE_CLOUD_KEYFILE_JSON: ${{ secrets.GCP_CREDENTIALS }}
+  TF_IN_AUTOMATION: true
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Terraform Init
+        run: terraform -chdir=envs/${{ matrix.env }} init
+
+      - name: Terraform Plan
+        run: terraform -chdir=envs/${{ matrix.env }} plan -var-file=terraform.tfvars -out=tfplan
+
+  apply:
+    runs-on: ubuntu-latest
+    needs: plan
+    if: github.ref == 'refs/heads/main' && matrix.env == 'prod'
+    strategy:
+      matrix:
+        env: [prod] 
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Terraform Init
+        run: terraform -chdir=envs/${{ matrix.env }} init
+
+      - name: Terraform Apply
+        run: terraform -chdir=envs/${{ matrix.env }} apply -auto-approve tfplan
+
+  destroy-plan:
+    runs-on: ubuntu-latest
+    needs: apply
+    strategy:
+      matrix:
+        env: [dev, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Terraform Init
+        run: terraform -chdir=envs/${{ matrix.env }} init
+
+      - name: Terraform Destroy Plan
+        run: terraform -chdir=envs/${{ matrix.env }} plan -destroy -var-file=terraform.tfvars -out=tfplan-destroy
+
+  destroy-apply:
+    runs-on: ubuntu-latest
+    needs: destroy-plan
+    if: github.event_name == 'workflow_dispatch' # manual only
+    strategy:
+      matrix:
+        env: [dev, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Terraform Init
+        run: terraform -chdir=envs/${{ matrix.env }} init
+
+      - name: Terraform Destroy Apply
+        run: terraform -chdir=envs/${{ matrix.env }} destroy -auto-approve

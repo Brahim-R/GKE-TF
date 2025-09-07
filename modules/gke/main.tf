@@ -5,7 +5,7 @@ resource "google_container_cluster" "gke_cluster" {
 
   network    = var.vpc_id
   subnetwork = element(var.subnet_ids, 0) 
-
+  deletion_protection      = false
   remove_default_node_pool = true
   initial_node_count       = 1
 
