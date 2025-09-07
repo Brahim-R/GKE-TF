@@ -88,7 +88,6 @@ jobs:
         with:
           project_id: ${{ secrets.GOOGLE_PROJECT_ID }}
 
-
       - name: Terraform Init
         run: terraform -chdir=envs/dev init
 
